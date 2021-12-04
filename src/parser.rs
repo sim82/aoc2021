@@ -3,10 +3,12 @@ use nom::{
     bytes::complete::tag,
     character::complete::{char, multispace0, multispace1, one_of},
     combinator::{opt, recognize},
-    multi::{many0, many1, separated_list0},
+    multi::{count, many0, many1, separated_list0},
     sequence::{delimited, preceded, separated_pair, terminated, tuple},
     IResult,
 };
+
+use crate::BingoBoard;
 
 // use crate::{Claim, RecordTimestamp, RecordType, Rect};
 
@@ -42,6 +44,10 @@ pub fn signed_decimal_list(input: &str) -> IResult<&str, Vec<i64>> {
     separated_list0(multispace1, signed_decimal)(input)
 }
 
+pub fn signed_decimal_comma_separated_list(input: &str) -> IResult<&str, Vec<i64>> {
+    separated_list0(char(','), signed_decimal)(input)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SubmarineCommand {
     Up(i64),
@@ -74,4 +80,41 @@ fn submarine_test() {
         submarine_command("up 10").unwrap(),
         ("", SubmarineCommand::Up(10))
     );
+}
+
+pub fn bingo_board(input: &str) -> IResult<&str, BingoBoard> {
+    fn bingo_line(input: &str) -> IResult<&str, Vec<i64>> {
+        count(delimited(multispace0, signed_decimal, multispace0), 5)(input)
+    }
+    let (input, lines) = count(delimited(multispace0, bingo_line, multispace0), 5)(input)?;
+    Ok((input, BingoBoard::new(lines)))
+}
+
+pub fn bingo_board_list(input: &str) -> IResult<&str, Vec<BingoBoard>> {
+    many0(bingo_board)(input)
+}
+
+#[test]
+fn bingo_test() {
+    println!(
+        "{:?}",
+        bingo_board_list(
+            "
+
+88 29 95 98 57
+49 36  6 23 83
+18  5 45 40 44
+62 81 74 99 87
+46 56 35 21 52
+
+
+49 11 72 87 56
+40 94 71 70  3
+65  2 90 64 63
+32 79 24 44 55
+58 53 35 77 60
+
+    "
+        )
+    )
 }
