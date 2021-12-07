@@ -13,11 +13,11 @@ fn puzzle(s: &str) -> (Option<Output1>, Option<Output2>) {
         .map(|s| s.parse::<i64>().unwrap())
         .collect::<Vec<_>>();
     let max_column = *input.iter().max().unwrap();
-    let res1 = (0..max_column)
+    let res1 = (0..=max_column)
         .map(|i| input.iter().map(|c| (*c - i).abs()).sum::<i64>())
         .min();
 
-    let res2 = (0..max_column)
+    let res2 = (0..=max_column)
         .map(|i| {
             input
                 .iter()
