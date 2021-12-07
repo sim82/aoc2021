@@ -7,6 +7,7 @@ pub fn example() -> (&'static str, Option<Output1>, Option<Output2>) {
 }
 
 fn puzzle(s: &str) -> (Option<Output1>, Option<Output2>) {
+    // let input = s.trim().split(',').map(|s| s.parse::<i64>().unwrap());
     (None, None)
 }
 

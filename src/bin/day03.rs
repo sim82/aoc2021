@@ -38,15 +38,11 @@ fn main() {
 
     let input_bits = input
         .iter()
-        .map(|v| {
-            v.iter()
-                .map(|b| if *b == 1 { true } else { false })
-                .collect::<Vec<_>>()
-        })
+        .map(|v| v.iter().map(|b| *b == 1).collect::<Vec<_>>())
         .collect::<Vec<_>>();
 
     let mut oxy = input_bits.clone();
-    let mut co2 = input_bits.clone();
+    let mut co2 = input_bits;
 
     for i in 0..12 {
         // let is_gamma = gamma_bits[i];

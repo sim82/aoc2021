@@ -8,7 +8,7 @@ use nom::{
     IResult,
 };
 
-use crate::BingoBoard;
+use crate::{BingoBoard, Vec2};
 
 // use crate::{Claim, RecordTimestamp, RecordType, Rect};
 
@@ -117,4 +117,27 @@ fn bingo_test() {
     "
         )
     )
+}
+
+pub fn coord2d(input: &str) -> IResult<&str, Vec2> {
+    let (input, (x, y)) = separated_pair(signed_decimal, char(','), signed_decimal)(input)?;
+
+    Ok((input, Vec2 { x, y }))
+}
+
+pub fn line_segment(input: &str) -> IResult<&str, (Vec2, Vec2)> {
+    let (input, (p1, p2)) = separated_pair(coord2d, tag(" -> "), coord2d)(input)?;
+    Ok((input, (p1, p2)))
+}
+
+pub fn line_segment_list(input: &str) -> IResult<&str, Vec<(Vec2, Vec2)>> {
+    separated_list0(multispace1, line_segment)(input)
+}
+
+#[test]
+fn line_test() {
+    assert_eq!(
+        line_segment("0,9 -> 5,9").unwrap(),
+        ("", (Vec2 { x: 0, y: 9 }, Vec2 { x: 5, y: 9 }))
+    );
 }
