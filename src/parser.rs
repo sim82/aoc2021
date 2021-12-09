@@ -1,9 +1,9 @@
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    character::complete::{char, multispace0, multispace1, one_of},
+    character::complete::{char, multispace0, multispace1, one_of, space0},
     combinator::{opt, recognize},
-    multi::{count, many0, many1, separated_list0},
+    multi::{count, many0, many1, many_m_n, separated_list0, separated_list1},
     sequence::{delimited, preceded, separated_pair, terminated, tuple},
     IResult,
 };
@@ -139,5 +139,78 @@ fn line_test() {
     assert_eq!(
         line_segment("0,9 -> 5,9").unwrap(),
         ("", (Vec2 { x: 0, y: 9 }, Vec2 { x: 5, y: 9 }))
+    );
+}
+
+pub fn seven_segment_sample(input: &str) -> IResult<&str, (Vec<&str>, Vec<&str>)> {
+    fn ag_string(input: &str) -> IResult<&str, &str> {
+        recognize(many1(one_of("abcdefg")))(input)
+    }
+
+    fn ag_string_list_10(input: &str) -> IResult<&str, Vec<&str>> {
+        many_m_n(10, 10, delimited(space0, ag_string, space0))(input)
+    }
+
+    fn ag_string_list_4(input: &str) -> IResult<&str, Vec<&str>> {
+        many_m_n(4, 4, delimited(space0, ag_string, space0))(input)
+    }
+
+    separated_pair(
+        ag_string_list_10,
+        delimited(multispace0, tag("|"), multispace0),
+        ag_string_list_4,
+    )(input)
+}
+
+pub fn seven_segment_sample_list(input: &str) -> IResult<&str, Vec<(Vec<&str>, Vec<&str>)>> {
+    separated_list0(multispace1, seven_segment_sample)(input)
+}
+
+#[test]
+fn test_seven_segment() {
+    // fgeab ca afcebg bdacfeg cfaedg gcfdb baec bfadeg bafgc acf |
+    // gebdcfa ecba ca fadegcb
+    assert_eq!(
+        seven_segment_sample(
+            "fgeab ca afcebg bdacfeg cfaedg gcfdb baec bfadeg bafgc acf | gebdcfa ecba ca fadegcb"
+        )
+        .unwrap(),
+        (
+            "",
+            (
+                vec![
+                    "fgeab", "ca", "afcebg", "bdacfeg", "cfaedg", "gcfdb", "baec", "bfadeg",
+                    "bafgc", "acf"
+                ],
+                vec!["gebdcfa", "ecba", "ca", "fadegcb"]
+            )
+        )
+    );
+
+    assert_eq!(
+        seven_segment_sample_list(
+            "fgeab ca afcebg bdacfeg cfaedg gcfdb baec bfadeg bafgc acf | gebdcfa ecba ca fadegcb
+            fgeab ca afcebg bdacfeg cfaedg gcfdb baec bfadeg bafgc acf | gebdcfa ecba ca fadegcb"
+        )
+        .unwrap(),
+        (
+            "",
+            vec![
+                (
+                    vec![
+                        "fgeab", "ca", "afcebg", "bdacfeg", "cfaedg", "gcfdb", "baec", "bfadeg",
+                        "bafgc", "acf"
+                    ],
+                    vec!["gebdcfa", "ecba", "ca", "fadegcb"]
+                ),
+                (
+                    vec![
+                        "fgeab", "ca", "afcebg", "bdacfeg", "cfaedg", "gcfdb", "baec", "bfadeg",
+                        "bafgc", "acf"
+                    ],
+                    vec!["gebdcfa", "ecba", "ca", "fadegcb"]
+                ),
+            ]
+        )
     );
 }

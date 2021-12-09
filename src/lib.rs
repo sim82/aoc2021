@@ -49,6 +49,11 @@ impl BingoBoard {
     }
 }
 
+pub fn lowercase_char_to_index(c: char) -> usize {
+    assert!(c.is_ascii_lowercase());
+    (c as u8 - b'a') as usize
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
