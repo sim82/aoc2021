@@ -2,10 +2,32 @@ use std::collections::HashMap;
 
 pub mod parser;
 
-#[derive(Debug, Clone, Copy, Default, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Hash)]
 pub struct Vec2 {
     pub x: i64,
     pub y: i64,
+}
+impl Vec2 {
+    pub fn ortho_neighbors(&self) -> [Vec2; 4] {
+        [
+            Vec2 {
+                x: self.x - 1,
+                y: self.y,
+            },
+            Vec2 {
+                x: self.x + 1,
+                y: self.y,
+            },
+            Vec2 {
+                x: self.x,
+                y: self.y - 1,
+            },
+            Vec2 {
+                x: self.x,
+                y: self.y + 1,
+            },
+        ]
+    }
 }
 
 #[derive(Debug)]
