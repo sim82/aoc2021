@@ -73,8 +73,8 @@ fn puzzle(s: &str) -> (Option<Output1>, Option<Output2>) {
         // adj.insert(a.to_string(), b.to_string());
         // adj.insert(b.to_string(), a.to_string());
 
-        adj.insert(a.to_string(), b.to_string());
-        adj.insert(b.to_string(), a.to_string());
+        adj.insert(*a, *b);
+        adj.insert(*b, *a);
     }
 
     let start = "start";
@@ -93,7 +93,7 @@ fn puzzle(s: &str) -> (Option<Output1>, Option<Output2>) {
             .get_vec(next)
             .unwrap()
             .iter()
-            .filter(|n| !visited.contains(n.as_str()))
+            .filter(|n| !visited.contains(**n))
         {
             let mut visited = visited.clone();
             if next.chars().all(|c| c.is_ascii_lowercase()) {
@@ -119,7 +119,8 @@ fn puzzle(s: &str) -> (Option<Output1>, Option<Output2>) {
             .get_vec(cur)
             .unwrap()
             .iter()
-            .filter(|n| !visited.contains(n.as_str()) || (boost.is_empty() && *n != start))
+            .cloned()
+            .filter(|n| !visited.contains(*n) || (boost.is_empty() && *n != start))
         {
             let mut visited = visited.clone();
             if cur.chars().all(|c| c.is_ascii_lowercase()) {
@@ -128,7 +129,7 @@ fn puzzle(s: &str) -> (Option<Output1>, Option<Output2>) {
             let mut path = path.clone();
             path.push(cur);
             let mut boost = boost;
-            if visited.contains(n.as_str()) {
+            if visited.contains(n) {
                 boost = n;
             }
             queue.push_back((path, n, visited, boost));
@@ -146,9 +147,7 @@ fn main() {
 
 #[test]
 fn test() {
-    // let (example, ref1, ref2) = example();
     for (example, ref1, ref2) in example().iter().cloned() {
-        // println!("example: {}", example);
         let (res1, res2) = puzzle(example);
         assert_eq!(res1, ref1);
         assert_eq!(res2, ref2);
