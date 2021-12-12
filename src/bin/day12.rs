@@ -60,23 +60,14 @@ start-RW",
 }
 
 fn puzzle(s: &str) -> (Option<Output1>, Option<Output2>) {
-    let input = s
+    let adj = s
         .trim()
         .lines()
-        .map(|s| {
-            let mut a = s.trim().split('-');
-            (a.next().unwrap(), a.next().unwrap())
+        .flat_map(|s| {
+            let (x, y) = s.trim().split_once('-').unwrap();
+            [(x, y), (y, x)]
         })
-        .collect::<Vec<_>>();
-    println!("{:?}", input);
-    let mut adj = MultiMap::new();
-    for (a, b) in input.iter() {
-        // adj.insert(a.to_string(), b.to_string());
-        // adj.insert(b.to_string(), a.to_string());
-
-        adj.insert(*a, *b);
-        adj.insert(*b, *a);
-    }
+        .collect::<MultiMap<_, _>>();
 
     let start = "start";
     let end = "end";
@@ -102,23 +93,19 @@ fn puzzle(s: &str) -> (Option<Output1>, Option<Output2>) {
     );
 
     let res2 = bfs_count_paths(
-        (start, HashSet::<&str>::new(), ""),
-        |(cur, visited, boost)| {
+        (start, true, HashSet::<&str>::new()),
+        |(cur, can_reenter, visited)| {
             adj.get_vec(cur)
                 .unwrap()
                 .iter()
                 .cloned()
-                .filter(|n| (boost.is_empty() && *n != start) || !visited.contains(*n))
+                .filter(|n| (*can_reenter && *n != start) || !visited.contains(*n))
                 .map(|n| {
                     let mut visited = visited.clone();
                     if cur.chars().all(|c| c.is_ascii_lowercase()) {
                         visited.insert(cur);
                     }
-                    let mut boost = *boost;
-                    if visited.contains(n) {
-                        boost = n;
-                    }
-                    (n, visited, boost)
+                    (n, *can_reenter && !visited.contains(n), visited)
                 })
                 .collect::<Vec<_>>()
         },
