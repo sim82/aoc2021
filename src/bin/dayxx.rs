@@ -19,7 +19,6 @@ fn main() {
 
 #[test]
 fn test() {
-    // let (example, ref1, ref2) = example();
     for (example, ref1, ref2) in example().iter().cloned() {
         let (res1, res2) = puzzle(example);
         assert_eq!(res1, ref1);
