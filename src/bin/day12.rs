@@ -1,8 +1,9 @@
 use std::collections::{HashSet, VecDeque};
 
+use aoc2021::bfs_count_paths;
 use multimap::MultiMap;
 
-type Output1 = i64;
+type Output1 = usize;
 type Output2 = Output1;
 
 const INPUT_NAME: &str = "input/input12.txt";
@@ -79,62 +80,50 @@ fn puzzle(s: &str) -> (Option<Output1>, Option<Output2>) {
 
     let start = "start";
     let end = "end";
-    let mut queue = VecDeque::new();
-    queue.push_back((start, HashSet::<&str>::new()));
-    let mut res1 = 0;
-    while !queue.is_empty() {
-        let (next, visited) = queue.pop_front().unwrap();
 
-        if next == end {
-            res1 += 1;
-            continue;
-        }
-        for n in adj
-            .get_vec(next)
-            .unwrap()
-            .iter()
-            .filter(|n| !visited.contains(**n))
-        {
-            let mut visited = visited.clone();
-            if next.chars().all(|c| c.is_ascii_lowercase()) {
-                visited.insert(next);
-            }
-            queue.push_back((n, visited));
-        }
-    }
+    let res1 = bfs_count_paths(
+        (start, HashSet::<&str>::new()),
+        |(cur, visited)| {
+            adj.get_vec(cur)
+                .unwrap()
+                .iter()
+                .cloned()
+                .filter(|n| !visited.contains(n))
+                .map(|n| {
+                    let mut visited = visited.clone();
+                    if cur.chars().all(|c| c.is_ascii_lowercase()) {
+                        visited.insert(cur);
+                    }
+                    (n, visited)
+                })
+                .collect::<Vec<_>>()
+        },
+        |(node, _)| *node == end,
+    );
 
-    let start = "start";
-    let end = "end";
-    let mut queue = VecDeque::new();
-    queue.push_back((vec![], start, HashSet::<&str>::new(), ""));
-    let mut res2 = 0;
-    while !queue.is_empty() {
-        let (path, cur, visited, boost) = queue.pop_front().unwrap();
-        if cur == end {
-            res2 += 1;
-            println!("done: {:?} {}", path, boost);
-            continue;
-        }
-        for n in adj
-            .get_vec(cur)
-            .unwrap()
-            .iter()
-            .cloned()
-            .filter(|n| !visited.contains(*n) || (boost.is_empty() && *n != start))
-        {
-            let mut visited = visited.clone();
-            if cur.chars().all(|c| c.is_ascii_lowercase()) {
-                visited.insert(cur);
-            }
-            let mut path = path.clone();
-            path.push(cur);
-            let mut boost = boost;
-            if visited.contains(n) {
-                boost = n;
-            }
-            queue.push_back((path, n, visited, boost));
-        }
-    }
+    let res2 = bfs_count_paths(
+        (start, HashSet::<&str>::new(), ""),
+        |(cur, visited, boost)| {
+            adj.get_vec(cur)
+                .unwrap()
+                .iter()
+                .cloned()
+                .filter(|n| (boost.is_empty() && *n != start) || !visited.contains(*n))
+                .map(|n| {
+                    let mut visited = visited.clone();
+                    if cur.chars().all(|c| c.is_ascii_lowercase()) {
+                        visited.insert(cur);
+                    }
+                    let mut boost = *boost;
+                    if visited.contains(n) {
+                        boost = n;
+                    }
+                    (n, visited, boost)
+                })
+                .collect::<Vec<_>>()
+        },
+        |(node, _, _)| *node == end,
+    );
 
     (Some(res1), Some(res2))
 }

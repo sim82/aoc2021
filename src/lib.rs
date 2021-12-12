@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 pub mod parser;
 
@@ -133,6 +133,34 @@ pub fn read_i64_field(s: &str) -> HashMap<Vec2, i64> {
             })
         })
         .collect()
+}
+
+/// Compute the number of possible paths from 'start' through to a node for which 'success' returns
+/// 'true'.
+///
+/// - 'start' is the starting node.
+/// - 'successors' returns the list of successors for a given node.
+/// - 'success' checks whether the goal has been reached
+
+pub fn bfs_count_paths<S, FN, FS, IN>(start: S, mut successors: FN, mut success: FS) -> usize
+where
+    S: Clone,
+    FN: FnMut(&S) -> IN,
+    IN: IntoIterator<Item = S>,
+    FS: FnMut(&S) -> bool,
+{
+    let mut queue = VecDeque::<S>::new();
+    queue.push_back(start);
+    let mut count = 0;
+    while let Some(s) = queue.pop_front() {
+        if success(&s) {
+            count += 1;
+            continue;
+        }
+        queue.extend(successors(&s).into_iter());
+    }
+
+    count
 }
 
 #[cfg(test)]
