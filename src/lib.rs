@@ -28,6 +28,42 @@ impl Vec2 {
             },
         ]
     }
+    pub fn neighbors(&self) -> [Vec2; 8] {
+        [
+            Vec2 {
+                x: self.x - 1,
+                y: self.y,
+            },
+            Vec2 {
+                x: self.x + 1,
+                y: self.y,
+            },
+            Vec2 {
+                x: self.x,
+                y: self.y - 1,
+            },
+            Vec2 {
+                x: self.x,
+                y: self.y + 1,
+            },
+            Vec2 {
+                x: self.x - 1,
+                y: self.y - 1,
+            },
+            Vec2 {
+                x: self.x + 1,
+                y: self.y + 1,
+            },
+            Vec2 {
+                x: self.x + 1,
+                y: self.y - 1,
+            },
+            Vec2 {
+                x: self.x - 1,
+                y: self.y + 1,
+            },
+        ]
+    }
 }
 
 #[derive(Debug)]
@@ -74,6 +110,29 @@ impl BingoBoard {
 pub fn lowercase_char_to_index(c: char) -> usize {
     assert!(c.is_ascii_lowercase());
     (c as u8 - b'a') as usize
+}
+
+fn char_to_int(c: char) -> i64 {
+    assert!(c.is_digit(10));
+    (c as u8 - b'0') as i64
+}
+
+pub fn read_i64_field(s: &str) -> HashMap<Vec2, i64> {
+    s.trim()
+        .lines()
+        .enumerate()
+        .flat_map(|(y, line)| {
+            line.trim().chars().enumerate().map(move |(x, c)| {
+                (
+                    Vec2 {
+                        x: x as i64,
+                        y: y as i64,
+                    },
+                    char_to_int(c),
+                )
+            })
+        })
+        .collect()
 }
 
 #[cfg(test)]
