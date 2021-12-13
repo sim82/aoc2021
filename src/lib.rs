@@ -1,4 +1,6 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
+
+use itertools::Itertools;
 
 pub mod parser;
 
@@ -169,5 +171,23 @@ mod tests {
     fn it_works() {
         let result = 2 + 2;
         assert_eq!(result, 4);
+    }
+}
+
+pub fn dump_bool_field(field: &HashSet<Vec2>) {
+    if field.is_empty() {
+        return;
+    }
+    let (minx, maxx) = field.iter().map(|c| c.x).minmax().into_option().unwrap();
+    let (miny, maxy) = field.iter().map(|c| c.y).minmax().into_option().unwrap();
+    for y in miny..=maxy {
+        for x in minx..=maxx {
+            if field.contains(&Vec2 { x, y }) {
+                print!("#");
+            } else {
+                print!(".");
+            }
+        }
+        println!();
     }
 }

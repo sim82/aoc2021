@@ -1,4 +1,4 @@
-use std::collections::{HashSet, VecDeque};
+use std::collections::HashSet;
 
 use aoc2021::bfs_count_paths;
 use multimap::MultiMap;

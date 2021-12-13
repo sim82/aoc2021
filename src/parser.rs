@@ -125,6 +125,10 @@ pub fn coord2d(input: &str) -> IResult<&str, Vec2> {
     Ok((input, Vec2 { x, y }))
 }
 
+pub fn coord2d_list(input: &str) -> IResult<&str, Vec<Vec2>> {
+    separated_list0(multispace0, coord2d)(input)
+}
+
 pub fn line_segment(input: &str) -> IResult<&str, (Vec2, Vec2)> {
     let (input, (p1, p2)) = separated_pair(coord2d, tag(" -> "), coord2d)(input)?;
     Ok((input, (p1, p2)))
@@ -213,4 +217,51 @@ fn test_seven_segment() {
             ]
         )
     );
+}
+
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub enum FoldInstruction {
+    X(i64),
+    Y(i64),
+}
+
+pub fn fold_instruction(input: &str) -> IResult<&str, FoldInstruction> {
+    let (input, (fi, num)) = preceded(
+        tag("fold along "),
+        separated_pair(alt((tag("x"), tag("y"))), char('='), signed_decimal),
+    )(input)?;
+    Ok((
+        input,
+        match fi {
+            "x" => FoldInstruction::X(num),
+            "y" => FoldInstruction::Y(num),
+            _ => panic!("bad direction in fold instruction"),
+        },
+    ))
+}
+
+pub fn fold_instruction_list(input: &str) -> IResult<&str, Vec<FoldInstruction>> {
+    separated_list0(multispace1, fold_instruction)(input)
+}
+
+pub fn coords_and_fold(input: &str) -> IResult<&str, (Vec<Vec2>, Vec<FoldInstruction>)> {
+    separated_pair(coord2d_list, multispace1, fold_instruction_list)(input)
+}
+
+#[test]
+fn test_fold() {
+    let (_, fi) = fold_instruction("fold along y=7").unwrap();
+    assert_eq!(fi, FoldInstruction::Y(7));
+
+    let (input, x) = coords_and_fold(
+        "1,10
+    2,14
+    8,10
+    9,0
+    
+    fold along y=7
+    fold along x=5",
+    )
+    .unwrap();
+    println!("{:?}", x);
 }
