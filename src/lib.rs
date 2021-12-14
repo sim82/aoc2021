@@ -165,6 +165,23 @@ where
     count
 }
 
+pub fn count_occurrences<T: Eq + Clone + std::hash::Hash, IN: IntoIterator<Item = T>>(
+    i: IN,
+) -> HashMap<T, i64> {
+    let mut counts = HashMap::new();
+    for e in i.into_iter() {
+        match counts.entry(e.clone()) {
+            std::collections::hash_map::Entry::Occupied(mut e) => {
+                *e.get_mut() += 1;
+            }
+            std::collections::hash_map::Entry::Vacant(e) => {
+                e.insert(1);
+            }
+        }
+    }
+    counts
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
