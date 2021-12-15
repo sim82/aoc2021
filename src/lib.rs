@@ -191,6 +191,14 @@ mod tests {
     }
 }
 
+pub fn i64_field_bounds(field: &HashMap<Vec2, i64>) -> (Vec2, Vec2)
+{
+    let (minx, maxx) = field.keys().map(|c| c.x).minmax().into_option().unwrap();
+    let (miny, maxy) = field.keys().map(|c| c.y).minmax().into_option().unwrap();
+
+    (Vec2{x:minx, y:miny}, Vec2{x:maxx, y:maxy})
+}
+
 pub fn dump_bool_field(field: &HashSet<Vec2>) {
     if field.is_empty() {
         return;

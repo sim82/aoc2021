@@ -9,4 +9,4 @@ edition = "2021"
 nom = "^7"
 itertools = "^0.10"
 multimap = { version = "^0.8", default-features = false }
-# pathfinding = { vertsion = "^3", default-features = false }
+pathfinding = { vertsion = "^3", default-features = false }
