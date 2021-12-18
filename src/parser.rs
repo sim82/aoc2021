@@ -1,14 +1,15 @@
+use itertools::Itertools;
 use nom::{
     branch::alt,
     bytes::complete::tag,
     character::complete::{char, multispace0, multispace1, one_of, space0},
-    combinator::{opt, recognize},
+    combinator::{map, opt, recognize},
     multi::{count, many0, many1, many_m_n, separated_list0, separated_list1},
     sequence::{delimited, preceded, separated_pair, terminated, tuple},
     IResult,
 };
 
-use crate::{BingoBoard, Vec2};
+use crate::{BingoBoard, SfNumber, Vec2};
 
 // use crate::{Claim, RecordTimestamp, RecordType, Rect};
 
@@ -264,4 +265,77 @@ fn test_fold() {
     )
     .unwrap();
     println!("{:?}", x);
+}
+
+pub fn snailfish_number(input: &str) -> IResult<&str, SfNumber> {
+    alt((
+        map(signed_decimal, SfNumber::Number),
+        delimited(
+            char('['),
+            map(
+                separated_pair(snailfish_number, char(','), snailfish_number),
+                |(l, r)| SfNumber::Pair(Box::new(l), Box::new(r)),
+            ),
+            char(']'),
+        ),
+    ))(input)
+}
+#[test]
+fn snailfish_test() {
+    let (_, mut x) =
+        snailfish_number("[[[[1,3],[5,3]],[[1,3],[8,7]]],[[[4,9],[6,9]],[[8,2],[7,3]]]]").unwrap();
+    println!("{:?}", x);
+    let mut v = x.traverse_left_to_right_vec(0);
+    println!("{:?}", v);
+
+    match v.get_mut(2).unwrap() {
+        (SfNumber::Number(x), _) => *x += 666,
+        _ => todo!(),
+    }
+    println!("{:?}", v);
+
+    let (_, mut x) = snailfish_number("[[[[[4,3],4],4],[7,[[8,4],9]]],[1,1]]").unwrap();
+    // loop {
+    //     {
+    //         let mut v = x.traverse_left_to_right_vec(0);
+    //         println!("{:?}", v);
+
+    //         if let Some((explode_pos, _)) = v
+    //             .windows(2)
+    //             .find_position(|x| x[0].1 == x[1].1 && x[0].1 >= 5)
+    //         {
+    //             println!("explode: {:?}", explode_pos);
+    //             // *v[explode_pos].0 = SfNumber::Exploded;
+    //             // *v[explode_pos + 1].0 = SfNumber::Exploded;
+
+    //             if explode_pos > 0 {
+    //                 let n = match (&v[explode_pos - 1].0, &v[explode_pos].0) {
+    //                     (SfNumber::Number(a), SfNumber::Number(b)) => a + b,
+    //                     _ => panic!("bad nodes"),
+    //                 };
+    //                 *v[explode_pos - 1].0 = SfNumber::Number(n);
+    //             }
+    //             if explode_pos < v.len() - 1 {
+    //                 let n = match (&v[explode_pos + 1].0, &v[explode_pos + 2].0) {
+    //                     (SfNumber::Number(a), SfNumber::Number(b)) => a + b,
+    //                     _ => panic!("bad nodes"),
+    //                 };
+    //                 *v[explode_pos + 2].0 = SfNumber::Number(n);
+    //             }
+    //             *v[explode_pos].0 = SfNumber::Exploded;
+    //             *v[explode_pos + 1].0 = SfNumber::Exploded;
+    //             x.prune_exploded();
+    //             continue;
+    //         } else if x.split() {
+    //             println!("split");
+    //             continue;
+    //         }
+    //     }
+    //     break;
+    // }
+    x.reduce();
+    println!("v: {:?}", x);
+    // *explode[0].0 = SfNumber::Exploded;
+    // let (a, b) = explode.split_first_mut().unwrap();
+    // let (b,_) -
 }

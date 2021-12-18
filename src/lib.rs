@@ -191,12 +191,11 @@ mod tests {
     }
 }
 
-pub fn i64_field_bounds(field: &HashMap<Vec2, i64>) -> (Vec2, Vec2)
-{
+pub fn i64_field_bounds(field: &HashMap<Vec2, i64>) -> (Vec2, Vec2) {
     let (minx, maxx) = field.keys().map(|c| c.x).minmax().into_option().unwrap();
     let (miny, maxy) = field.keys().map(|c| c.y).minmax().into_option().unwrap();
 
-    (Vec2{x:minx, y:miny}, Vec2{x:maxx, y:maxy})
+    (Vec2 { x: minx, y: miny }, Vec2 { x: maxx, y: maxy })
 }
 
 pub fn dump_bool_field(field: &HashSet<Vec2>) {
@@ -214,5 +213,169 @@ pub fn dump_bool_field(field: &HashSet<Vec2>) {
             }
         }
         println!();
+    }
+}
+
+// pub enum SnDir {
+//     None,
+//     Left,
+//     Right,
+// }
+
+// pub enum SnLink {
+//     Number(i64),
+//     Node(usize),
+// }
+
+// pub struct SnNode {
+//     from_dir: SnDir,
+//     parent: usize,
+//     id: usize,
+//     left: SnLink,
+//     right: SnLink,
+// }
+
+// #[derive(Default)]
+// pub struct SnNodes {
+//     next: usize,
+//     nodes: HashMap<usize, SnNode>,
+// }
+
+// impl SnNodes {
+//     pub fn put(&mut self, mut node: SnNode) {
+//         node.id = self.next;
+//         self.next += 1;
+//         self.nodes.insert(node.id, node);
+//     }
+
+//     pub fn get(&self, id: usize) -> &SnNode {
+//         self.nodes.get(&id).unwrap()
+//     }
+//     pub fn get_mut(&mut self, id: usize) -> &SnNode {
+//         self.nodes.get_mut(&id).unwrap()
+//     }
+// }
+
+#[derive(Debug, Clone)]
+pub enum SfNumber {
+    Number(i64),
+    Pair(Box<SfNumber>, Box<SfNumber>),
+    Exploded,
+}
+
+impl SfNumber {
+    pub fn traverse_left_to_right(&self) {
+        match self {
+            SfNumber::Number(v) => println!("v: {}", v),
+            SfNumber::Pair(l, r) => {
+                l.traverse_left_to_right();
+                r.traverse_left_to_right();
+            }
+            _ => panic!("bad node type"),
+        }
+    }
+
+    pub fn traverse_left_to_right_vec(&mut self, level: usize) -> Vec<(&mut SfNumber, usize)> {
+        match self {
+            SfNumber::Number(v) => vec![(self, level)],
+            SfNumber::Pair(l, r) => {
+                let mut vl = l.traverse_left_to_right_vec(level + 1);
+                let mut vr = r.traverse_left_to_right_vec(level + 1);
+                vl.append(&mut vr);
+                vl
+            }
+            _ => panic!("bad node"),
+        }
+    }
+    pub fn is_exploded(&self) -> bool {
+        matches!(self, SfNumber::Exploded)
+    }
+    pub fn prune_exploded(&mut self) {
+        match self {
+            SfNumber::Pair(a, b) if a.is_exploded() && b.is_exploded() => {
+                *self = SfNumber::Number(0)
+            }
+            SfNumber::Pair(a, b) => {
+                a.prune_exploded();
+                b.prune_exploded();
+            }
+            _ => {}
+        }
+    }
+
+    pub fn split(&mut self) -> bool {
+        match self {
+            SfNumber::Number(n) if *n > 9 => {
+                *self = SfNumber::Pair(
+                    Box::new(SfNumber::Number(*n / 2)),
+                    Box::new(SfNumber::Number(*n / 2 + *n % 2)),
+                );
+                true
+            }
+            SfNumber::Pair(a, b) => a.split() || b.split(),
+            _ => false,
+        }
+    }
+    // pub fn traverse_pairs_left_to_right_vec(
+    //     &mut self,
+    //     level: usize,
+    // ) -> Vec<((&mut i64, &mut i64), usize)> {
+    //     match self {
+    //         SfNumber::Number(v) => vec![(self, level)],
+    //         SfNumber::Pair(l, r) => {
+    //             let mut vl = l.traverse_left_to_right_vec(level + 1);
+    //             let mut vr = r.traverse_left_to_right_vec(level + 1);
+    //             vl.append(&mut vr);
+    //             vl
+    //         }
+    //     }
+    // }
+
+    pub fn reduce(&mut self) {
+        loop {
+            {
+                let mut v = self.traverse_left_to_right_vec(0);
+                println!("{:?}", v);
+
+                if let Some((explode_pos, _)) = v
+                    .windows(2)
+                    .find_position(|x| x[0].1 == x[1].1 && x[0].1 >= 5)
+                {
+                    // println!("explode: {:?}", explode_pos);
+                    // *v[explode_pos].0 = SfNumber::Exploded;
+                    // *v[explode_pos + 1].0 = SfNumber::Exploded;
+
+                    if explode_pos > 0 {
+                        let n = match (&v[explode_pos - 1].0, &v[explode_pos].0) {
+                            (SfNumber::Number(a), SfNumber::Number(b)) => a + b,
+                            _ => panic!("bad nodes"),
+                        };
+                        *v[explode_pos - 1].0 = SfNumber::Number(n);
+                    }
+                    if explode_pos < v.len() - 2 {
+                        let n = match (&v[explode_pos + 1].0, &v[explode_pos + 2].0) {
+                            (SfNumber::Number(a), SfNumber::Number(b)) => a + b,
+                            _ => panic!("bad nodes"),
+                        };
+                        *v[explode_pos + 2].0 = SfNumber::Number(n);
+                    }
+                    *v[explode_pos].0 = SfNumber::Exploded;
+                    *v[explode_pos + 1].0 = SfNumber::Exploded;
+                    self.prune_exploded();
+                    continue;
+                } else if self.split() {
+                    // println!("split");
+                    continue;
+                }
+            }
+            break;
+        }
+    }
+    pub fn get_magnitude(&self) -> i64 {
+        match self {
+            SfNumber::Number(n) => *n,
+            SfNumber::Pair(a, b) => 3 * a.get_magnitude() + 2 * b.get_magnitude(),
+            _ => panic!("bad node"),
+        }
     }
 }
