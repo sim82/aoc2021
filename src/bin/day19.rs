@@ -81,6 +81,30 @@ fn puzzle(s: &str) -> (Option<Output1>, Option<Output2>) {
         (0, (Dir3::XPos, Dir3::YPos, Dir3::ZPos), Vec3::new(0, 0, 0)),
     );
 
+    // for i in 1..scanners.len() {
+    //     'outer: for target_scanner in scanners.iter() {
+    //         if target_scanner.id == scanners[i].id {
+    //             continue;
+    //         }
+    //         for o in ORIENTATIONS.iter() {
+    //             let src_probes = scanners[i]
+    //                 .probes
+    //                 .iter()
+    //                 .map(|p| p.permute(o))
+    //                 .collect::<Vec<_>>();
+
+    //             let trans = optimize(&target_scanner.probes, &src_probes);
+    //             if let Some(trans) = trans {
+    //                 println!("{:?}", trans);
+    //                 known.insert(scanners[i].id, (target_scanner.id, *o, trans));
+    //                 break 'outer;
+    //             }
+    //         }
+    //     }
+    // }
+    // assert!(known.len() == scanners.len());
+
+    let mut checked = HashSet::new();
     while known.len() != scanners.len() {
         for scanner in scanners.iter() {
             if known.contains_key(&scanner.id) {
@@ -88,6 +112,9 @@ fn puzzle(s: &str) -> (Option<Output1>, Option<Output2>) {
             }
 
             'outer: for known_id in known.keys().cloned() {
+                if checked.contains(&(scanner.id, known_id)) {
+                    continue;
+                }
                 for o in ORIENTATIONS.iter() {
                     let probes1 = scanner
                         .probes
@@ -96,6 +123,7 @@ fn puzzle(s: &str) -> (Option<Output1>, Option<Output2>) {
                         .collect::<Vec<_>>();
 
                     let trans = optimize(&scanners[known_id as usize].probes, &probes1);
+                    checked.insert((scanner.id, known_id));
                     if let Some(trans) = trans {
                         println!("{:?}", trans);
                         known.insert(scanner.id, (known_id, *o, trans));
@@ -120,7 +148,7 @@ fn puzzle(s: &str) -> (Option<Output1>, Option<Output2>) {
                 *v = v.permute(&parent_dir) + trans;
             });
             pos = pos.permute(&parent_dir) + trans;
-
+            // println!("parent id: {}", parent_id);
             if parent_id == 0 {
                 break;
             }
