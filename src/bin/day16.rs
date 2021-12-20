@@ -20,7 +20,7 @@ pub fn example() -> &'static [(&'static str, Option<Output1>, Option<Output2>)] 
     ]
 }
 
-fn read_packet(r: &mut NibbleReader<'_>) -> (u64, u64) {
+fn read_packet(r: &mut dyn NibbleReader) -> (u64, u64) {
     let mut version = r.read_int(3);
     let id = r.read_int(3);
 
@@ -84,21 +84,28 @@ fn read_packet(r: &mut NibbleReader<'_>) -> (u64, u64) {
 
 fn puzzle(s: &str) -> (Option<Output1>, Option<Output2>) {
     let nibbles = s.chars().collect::<Vec<_>>();
-    let mut r = NibbleReader::new(&nibbles);
+    let mut r = NibbleReaderChars::new(&nibbles);
 
     let (version_sum, v) = read_packet(&mut r);
     (Some(version_sum), Some(v))
 }
 
-struct NibbleReader<'a> {
+struct NibbleReaderChars<'a> {
     nibbles: &'a [char],
-    // ptr: usize,
     nibble: u8,
     mask: u8,
     pos: usize,
 }
 
-impl<'a> NibbleReader<'a> {
+trait NibbleReader {
+    fn next_bit(&mut self) -> bool;
+    fn read_int(&mut self, bits: usize) -> u64;
+    fn read_literal(&mut self) -> u64;
+    fn drop_nibble(&mut self);
+    fn pos(&self) -> usize;
+}
+
+impl<'a> NibbleReaderChars<'a> {
     pub fn new(input: &'a [char]) -> Self {
         Self {
             nibbles: input,
@@ -107,8 +114,10 @@ impl<'a> NibbleReader<'a> {
             pos: 0,
         }
     }
+}
 
-    pub fn next_bit(&mut self) -> bool {
+impl<'a> NibbleReader for NibbleReaderChars<'a> {
+    fn next_bit(&mut self) -> bool {
         if self.mask == 0 {
             self.nibble = u8::from_str_radix(&self.nibbles[0].to_string(), 16).unwrap();
             self.nibbles = &self.nibbles[1..];
@@ -120,7 +129,7 @@ impl<'a> NibbleReader<'a> {
         self.pos += 1;
         res
     }
-    pub fn read_int(&mut self, bits: usize) -> u64 {
+    fn read_int(&mut self, bits: usize) -> u64 {
         let mut ret = 0;
         for _ in 0..bits {
             ret <<= 1;
@@ -131,7 +140,7 @@ impl<'a> NibbleReader<'a> {
         ret
     }
 
-    pub fn read_literal(&mut self) -> u64 {
+    fn read_literal(&mut self) -> u64 {
         let mut ret = 0;
         loop {
             let v = self.read_int(5);
@@ -143,10 +152,10 @@ impl<'a> NibbleReader<'a> {
         }
         ret
     }
-    pub fn drop_nibble(&mut self) {
+    fn drop_nibble(&mut self) {
         self.mask = 0;
     }
-    pub fn pos(&self) -> usize {
+    fn pos(&self) -> usize {
         self.pos
     }
 }
@@ -169,7 +178,7 @@ fn test() {
 #[test]
 fn test_bits() {
     let nibbles = "1E".chars().collect::<Vec<_>>();
-    let mut r = NibbleReader::new(&nibbles);
+    let mut r = NibbleReaderChars::new(&nibbles);
     for _ in 0..3 {
         assert!(!r.next_bit());
     }
@@ -179,13 +188,13 @@ fn test_bits() {
     }
     assert!(!r.next_bit());
 
-    let mut r = NibbleReader::new(&nibbles);
+    let mut r = NibbleReaderChars::new(&nibbles);
     assert_eq!(r.read_int(3), 0b000);
     assert_eq!(r.read_int(3), 0b111);
     assert_eq!(r.read_int(2), 0b10);
 
     let nibbles = "D2FE28".chars().collect::<Vec<_>>();
-    let mut r = NibbleReader::new(&nibbles);
+    let mut r = NibbleReaderChars::new(&nibbles);
 
     let version = r.read_int(3);
     let id = r.read_int(3);

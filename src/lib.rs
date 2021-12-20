@@ -1,4 +1,7 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::{
+    collections::{HashMap, HashSet, VecDeque},
+    ops::{Add, Sub},
+};
 
 use itertools::Itertools;
 
@@ -66,6 +69,111 @@ impl Vec2 {
             },
         ]
     }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub enum Dir3 {
+    XPos,
+    XNeg,
+    YPos,
+    YNeg,
+    ZPos,
+    ZNeg,
+}
+
+pub const ORIENTATIONS: [(Dir3, Dir3, Dir3); 24] = [
+    (Dir3::XPos, Dir3::YPos, Dir3::ZPos),
+    (Dir3::XPos, Dir3::YNeg, Dir3::ZNeg),
+    (Dir3::XPos, Dir3::ZPos, Dir3::YNeg),
+    (Dir3::XPos, Dir3::ZNeg, Dir3::YPos),
+    (Dir3::XNeg, Dir3::YPos, Dir3::ZNeg),
+    (Dir3::XNeg, Dir3::YNeg, Dir3::ZPos),
+    (Dir3::XNeg, Dir3::ZPos, Dir3::YPos),
+    (Dir3::XNeg, Dir3::ZNeg, Dir3::YNeg),
+    (Dir3::YPos, Dir3::XPos, Dir3::ZNeg),
+    (Dir3::YPos, Dir3::XNeg, Dir3::ZPos),
+    (Dir3::YPos, Dir3::ZPos, Dir3::XPos),
+    (Dir3::YPos, Dir3::ZNeg, Dir3::XNeg),
+    (Dir3::YNeg, Dir3::XPos, Dir3::ZPos),
+    (Dir3::YNeg, Dir3::XNeg, Dir3::ZNeg),
+    (Dir3::YNeg, Dir3::ZPos, Dir3::XNeg),
+    (Dir3::YNeg, Dir3::ZNeg, Dir3::XPos),
+    (Dir3::ZPos, Dir3::XPos, Dir3::YPos),
+    (Dir3::ZPos, Dir3::XNeg, Dir3::YNeg),
+    (Dir3::ZPos, Dir3::YPos, Dir3::XNeg),
+    (Dir3::ZPos, Dir3::YNeg, Dir3::XPos),
+    (Dir3::ZNeg, Dir3::XPos, Dir3::YNeg),
+    (Dir3::ZNeg, Dir3::XNeg, Dir3::YPos),
+    (Dir3::ZNeg, Dir3::YPos, Dir3::XPos),
+    (Dir3::ZNeg, Dir3::YNeg, Dir3::XNeg),
+];
+
+#[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Hash, Ord, PartialOrd)]
+pub struct Vec3 {
+    pub x: i64,
+    pub y: i64,
+    pub z: i64,
+}
+
+impl Vec3 {
+    pub fn new(x: i64, y: i64, z: i64) -> Self {
+        Vec3 { x, y, z }
+    }
+
+    pub fn manhattan_dist(&self, other: &Vec3) -> i64 {
+        (self.x - other.x).abs() + (self.y - other.y).abs() + (self.z - other.z).abs()
+    }
+
+    pub fn get_component(&self, d: Dir3) -> i64 {
+        match d {
+            Dir3::XPos => self.x,
+            Dir3::XNeg => -self.x,
+            Dir3::YPos => self.y,
+            Dir3::YNeg => -self.y,
+            Dir3::ZPos => self.z,
+            Dir3::ZNeg => -self.z,
+        }
+    }
+
+    pub fn permute(&self, p: &(Dir3, Dir3, Dir3)) -> Self {
+        Vec3 {
+            x: self.get_component(p.0),
+            y: self.get_component(p.1),
+            z: self.get_component(p.2),
+        }
+    }
+}
+
+impl Sub for Vec3 {
+    type Output = Self;
+
+    fn sub(self, rhs: Vec3) -> Self::Output {
+        Vec3 {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+            z: self.z - rhs.z,
+        }
+    }
+}
+
+impl Add for Vec3 {
+    type Output = Self;
+
+    fn add(self, rhs: Vec3) -> Self::Output {
+        Vec3 {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+            z: self.z + rhs.z,
+        }
+    }
+}
+
+#[test]
+fn test_vec3() {
+    assert_eq!(
+        Vec3 { x: 1, y: 1, z: 1 }.manhattan_dist(&Vec3 { x: 2, y: 3, z: 4 }),
+        6
+    );
 }
 
 #[derive(Debug)]

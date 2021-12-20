@@ -9,7 +9,7 @@ use nom::{
     IResult,
 };
 
-use crate::{BingoBoard, SfNumber, Vec2};
+use crate::{BingoBoard, SfNumber, Vec2, Vec3};
 
 // use crate::{Claim, RecordTimestamp, RecordType, Rect};
 
@@ -338,4 +338,95 @@ fn snailfish_test() {
     // *explode[0].0 = SfNumber::Exploded;
     // let (a, b) = explode.split_first_mut().unwrap();
     // let (b,_) -
+}
+
+pub fn scanner_head(input: &str) -> IResult<&str, i64> {
+    let (input, num) = delimited(
+        delimited(multispace0, tag("--- scanner"), multispace1),
+        signed_decimal,
+        delimited(multispace1, tag("---"), multispace0),
+    )(input)?;
+    Ok((input, num))
+}
+
+pub fn coord3d(input: &str) -> IResult<&str, Vec3> {
+    let (input, (x, _, y, _, z)) = tuple((
+        signed_decimal,
+        char(','),
+        signed_decimal,
+        char(','),
+        signed_decimal,
+    ))(input)?;
+
+    Ok((input, Vec3 { x, y, z }))
+}
+
+pub fn coord3d_list(input: &str) -> IResult<&str, Vec<Vec3>> {
+    separated_list0(multispace0, coord3d)(input)
+}
+
+pub fn scanner(input: &str) -> IResult<&str, (i64, Vec<Vec3>)> {
+    let (input, num) = scanner_head(input)?;
+    let (input, coords) = coord3d_list(input)?;
+
+    Ok((input, (num, coords)))
+}
+
+pub fn scanner_list(input: &str) -> IResult<&str, Vec<(i64, Vec<Vec3>)>> {
+    separated_list0(multispace0, scanner)(input)
+}
+
+#[test]
+fn test_scanner() {
+    let (input, sl) = scanner_list(
+        "--- scanner 0 ---
+    404,-588,-901
+    528,-643,409
+    
+    --- scanner 1 ---
+    686,422,578
+    605,423,415
+    515,917,-361
+    
+    --- scanner 2 ---
+    649,640,665
+    682,-795,504
+    -784,533,-524
+    -644,584,-595
+    ",
+    )
+    .unwrap();
+
+    assert_eq!(sl.len(), 3);
+    assert_eq!(sl[0].0, 0);
+    assert_eq!(sl[1].0, 1);
+    assert_eq!(sl[2].0, 2);
+
+    assert_eq!(sl[0].1.len(), 2);
+    assert_eq!(sl[1].1.len(), 3);
+    assert_eq!(sl[2].1.len(), 4);
+    assert_eq!(
+        sl[0].1[0],
+        Vec3 {
+            x: 404,
+            y: -588,
+            z: -901
+        }
+    );
+    assert_eq!(
+        sl[1].1[1],
+        Vec3 {
+            x: 605,
+            y: 423,
+            z: 415
+        }
+    );
+    assert_eq!(
+        sl[2].1[2],
+        Vec3 {
+            x: -784,
+            y: 533,
+            z: -524
+        }
+    );
 }
