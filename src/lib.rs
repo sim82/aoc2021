@@ -37,27 +37,11 @@ impl Vec2 {
         [
             Vec2 {
                 x: self.x - 1,
-                y: self.y,
-            },
-            Vec2 {
-                x: self.x + 1,
-                y: self.y,
-            },
-            Vec2 {
-                x: self.x,
                 y: self.y - 1,
             },
             Vec2 {
                 x: self.x,
-                y: self.y + 1,
-            },
-            Vec2 {
-                x: self.x - 1,
                 y: self.y - 1,
-            },
-            Vec2 {
-                x: self.x + 1,
-                y: self.y + 1,
             },
             Vec2 {
                 x: self.x + 1,
@@ -65,6 +49,59 @@ impl Vec2 {
             },
             Vec2 {
                 x: self.x - 1,
+                y: self.y,
+            },
+            Vec2 {
+                x: self.x + 1,
+                y: self.y,
+            },
+            Vec2 {
+                x: self.x - 1,
+                y: self.y + 1,
+            },
+            Vec2 {
+                x: self.x,
+                y: self.y + 1,
+            },
+            Vec2 {
+                x: self.x + 1,
+                y: self.y + 1,
+            },
+        ]
+    }
+    pub fn self_and_neighbors(&self) -> [Vec2; 9] {
+        [
+            Vec2 {
+                x: self.x - 1,
+                y: self.y - 1,
+            },
+            Vec2 {
+                x: self.x,
+                y: self.y - 1,
+            },
+            Vec2 {
+                x: self.x + 1,
+                y: self.y - 1,
+            },
+            Vec2 {
+                x: self.x - 1,
+                y: self.y,
+            },
+            *self,
+            Vec2 {
+                x: self.x + 1,
+                y: self.y,
+            },
+            Vec2 {
+                x: self.x - 1,
+                y: self.y + 1,
+            },
+            Vec2 {
+                x: self.x,
+                y: self.y + 1,
+            },
+            Vec2 {
+                x: self.x + 1,
                 y: self.y + 1,
             },
         ]
@@ -303,6 +340,12 @@ pub fn i64_field_bounds(field: &HashMap<Vec2, i64>) -> (Vec2, Vec2) {
     let (minx, maxx) = field.keys().map(|c| c.x).minmax().into_option().unwrap();
     let (miny, maxy) = field.keys().map(|c| c.y).minmax().into_option().unwrap();
 
+    (Vec2 { x: minx, y: miny }, Vec2 { x: maxx, y: maxy })
+}
+
+pub fn bool_field_bounds(field: &HashSet<Vec2>) -> (Vec2, Vec2) {
+    let (minx, maxx) = field.iter().map(|c| c.x).minmax().into_option().unwrap();
+    let (miny, maxy) = field.iter().map(|c| c.y).minmax().into_option().unwrap();
     (Vec2 { x: minx, y: miny }, Vec2 { x: maxx, y: maxy })
 }
 
