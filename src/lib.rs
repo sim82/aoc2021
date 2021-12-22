@@ -599,7 +599,7 @@ impl Cube {
         let rstart = *r.start();
         let rend = *r.end();
 
-        match overlap_type(r.clone(), s.clone()) {
+        match overlap_type(r, s.clone()) {
             Overlap::Equals | Overlap::Contains => (vec![s], vec![]),
             Overlap::Contained => {
                 assert!(rstart < rend);
@@ -609,9 +609,9 @@ impl Cube {
             }
             Overlap::Start => {
                 assert!(sstart < rend);
-                if rend >= send {
-                    panic!("{:?} {:?} {} {}", r, s, rend, send);
-                }
+                // if rend >= send {
+                //     panic!("{:?} {:?} {} {}", r, s, rend, send);
+                // }
                 assert!(rend < send);
                 (vec![sstart..=rend], vec![rend..=send])
             }
