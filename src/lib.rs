@@ -1,6 +1,6 @@
 use std::{
     collections::{HashMap, HashSet, VecDeque},
-    ops::{Add, Sub},
+    ops::{Add, RangeInclusive, Sub},
 };
 
 use itertools::Itertools;
@@ -529,4 +529,207 @@ impl SfNumber {
             _ => panic!("bad node"),
         }
     }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct Cube {
+    pub xrange: RangeInclusive<i64>,
+    pub yrange: RangeInclusive<i64>,
+    pub zrange: RangeInclusive<i64>,
+}
+
+#[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
+pub enum Overlap {
+    Equals,
+    Contains,
+    Contained,
+    Start,
+    End,
+    None,
+}
+
+fn overlap_type(a: RangeInclusive<i64>, b: RangeInclusive<i64>) -> Overlap {
+    let astart = a.start();
+    let aend = a.end();
+    let bstart = b.start();
+    let bend = b.end();
+    if aend <= bstart || astart >= bend {
+        Overlap::None
+    } else if a == b {
+        Overlap::Equals
+    } else if astart <= bstart && aend >= bend {
+        Overlap::Contains
+    } else if astart > bstart && aend < bend {
+        Overlap::Contained
+    } else if astart <= bstart && aend > bstart {
+        Overlap::Start
+    } else if astart < bend && aend >= bend {
+        Overlap::End
+    } else {
+        panic!("overlap {}..{} {}..{}", astart, aend, bstart, bend);
+        // unreachable!()
+    }
+}
+
+#[test]
+fn test_overlap() {
+    assert_eq!(overlap_type(-10..=10, -10..=10), Overlap::Equals);
+    assert_eq!(overlap_type(0..=11, 1..=10), Overlap::Contains);
+    assert_eq!(overlap_type(-9..=9, -10..=10), Overlap::Contained);
+    assert_eq!(overlap_type(-10..=9, -9..=10), Overlap::Start);
+    assert_eq!(overlap_type(-10..=9, -10..=10), Overlap::Start);
+    assert_eq!(overlap_type(-9..=11, -10..=10), Overlap::End);
+    assert_eq!(overlap_type(-9..=10, -10..=10), Overlap::End);
+    assert_eq!(overlap_type(-10..=-5, -5..=10), Overlap::None);
+}
+
+impl Cube {
+    pub fn overlaps(&self, other: &Cube) -> bool {
+        overlap_type(self.xrange.clone(), other.xrange.clone()) != Overlap::None
+            && overlap_type(self.yrange.clone(), other.yrange.clone()) != Overlap::None
+            && overlap_type(self.zrange.clone(), other.zrange.clone()) != Overlap::None
+    }
+
+    pub fn split_side(
+        s: RangeInclusive<i64>,
+        r: RangeInclusive<i64>,
+    ) -> (Vec<RangeInclusive<i64>>, Vec<RangeInclusive<i64>>) {
+        let sstart = *s.start();
+        let send = *s.end();
+        let rstart = *r.start();
+        let rend = *r.end();
+
+        match overlap_type(r.clone(), s.clone()) {
+            Overlap::Equals | Overlap::Contains => (vec![s], vec![]),
+            Overlap::Contained => {
+                assert!(rstart < rend);
+                assert!(sstart < rstart);
+                assert!(rend < send);
+                (vec![rstart..=rend], vec![sstart..=rstart, rend..=send])
+            }
+            Overlap::Start => {
+                assert!(sstart < rend);
+                if rend >= send {
+                    panic!("{:?} {:?} {} {}", r, s, rend, send);
+                }
+                assert!(rend < send);
+                (vec![sstart..=rend], vec![rend..=send])
+            }
+            Overlap::End => {
+                assert!(rstart < send);
+                assert!(sstart < rstart);
+                (vec![rstart..=send], vec![sstart..=rstart])
+            }
+            Overlap::None => (vec![], vec![s]),
+        }
+    }
+
+    pub fn split(&self, rcube: &Cube) -> Option<(Vec<Cube>, Vec<Cube>)> {
+        let mut new_cubes_out = Vec::new();
+        let (in_range, out_range) = Cube::split_side(self.xrange.clone(), rcube.xrange.clone());
+
+        let new_cubes_in_x = in_range
+            .iter()
+            .cloned()
+            .map(|xrange| Cube {
+                xrange,
+                yrange: self.yrange.clone(),
+                zrange: self.zrange.clone(),
+            })
+            .collect::<Vec<_>>();
+        new_cubes_out.extend(out_range.iter().cloned().map(|xrange| Cube {
+            xrange,
+            yrange: self.yrange.clone(),
+            zrange: self.zrange.clone(),
+        }));
+
+        if new_cubes_in_x.is_empty() {
+            return None;
+        }
+
+        let mut new_cubes_in_y = Vec::new();
+        for cube in new_cubes_in_x {
+            let (in_range, out_range) = Cube::split_side(cube.yrange.clone(), rcube.yrange.clone());
+
+            new_cubes_in_y.extend(in_range.iter().cloned().map(|yrange| Cube {
+                xrange: cube.xrange.clone(),
+                yrange,
+                zrange: self.zrange.clone(),
+            }));
+
+            new_cubes_out.extend(out_range.iter().cloned().map(|yrange| Cube {
+                xrange: cube.xrange.clone(),
+                yrange,
+                zrange: self.zrange.clone(),
+            }));
+        }
+
+        if new_cubes_in_y.is_empty() {
+            return None;
+        }
+
+        let mut new_cubes_in_z = Vec::new();
+        for cube in new_cubes_in_y {
+            let (in_range, out_range) = Cube::split_side(cube.zrange.clone(), rcube.zrange.clone());
+
+            new_cubes_in_z.extend(in_range.iter().cloned().map(|zrange| Cube {
+                xrange: cube.xrange.clone(),
+                yrange: cube.yrange.clone(),
+                zrange,
+            }));
+
+            new_cubes_out.extend(out_range.iter().cloned().map(|zrange| Cube {
+                xrange: cube.xrange.clone(),
+                yrange: cube.yrange.clone(),
+                zrange,
+            }));
+        }
+
+        Some((new_cubes_in_z, new_cubes_out))
+    }
+
+    pub fn volume(&self) -> i64 {
+        let xstart = self.xrange.start();
+        let xend = self.xrange.end();
+
+        let ystart = self.yrange.start();
+        let yend = self.yrange.end();
+
+        let zstart = self.zrange.start();
+        let zend = self.zrange.end();
+
+        (xend - xstart) * (yend - ystart) * (zend - zstart)
+    }
+}
+
+#[test]
+fn test_cube() {
+    let s = Cube {
+        xrange: -10..=10,
+        yrange: -15..=15,
+        zrange: -20..=20,
+    };
+
+    let r = Cube {
+        xrange: -2..=3,
+        yrange: -4..=5,
+        zrange: -6..=7,
+    };
+
+    let (in_cubes, out_cubes) = s.split(&r).unwrap();
+    assert_eq!(in_cubes.len(), 1);
+    assert_eq!(in_cubes[0], r);
+
+    assert_eq!(out_cubes.len(), 6);
+
+    println!("in: {:?}", in_cubes);
+    println!("out: {:?}", out_cubes);
+
+    assert_eq!(
+        s.volume(),
+        in_cubes
+            .iter()
+            .chain(out_cubes.iter())
+            .fold(0, |a, c| a + c.volume())
+    )
 }

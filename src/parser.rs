@@ -1,8 +1,10 @@
+use std::ops::RangeInclusive;
+
 use itertools::Itertools;
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    character::complete::{char, multispace0, multispace1, one_of, space0},
+    character::complete::{alpha1, char, multispace0, multispace1, one_of, space0, space1},
     combinator::{map, opt, recognize},
     multi::{count, many0, many1, many_m_n, separated_list0, separated_list1},
     sequence::{delimited, preceded, separated_pair, terminated, tuple},
@@ -429,4 +431,61 @@ fn test_scanner() {
             z: -524
         }
     );
+}
+
+pub fn range(input: &str) -> IResult<&str, RangeInclusive<i64>> {
+    map(
+        separated_pair(signed_decimal, tag(".."), signed_decimal),
+        |(l, r)| l..=r,
+    )(input)
+}
+pub fn named_range(input: &str) -> IResult<&str, (&str, RangeInclusive<i64>)> {
+    separated_pair(alpha1, tag("="), range)(input)
+}
+
+type RebootStep = (
+    bool,
+    RangeInclusive<i64>,
+    RangeInclusive<i64>,
+    RangeInclusive<i64>,
+);
+
+pub fn reboot_step(input: &str) -> IResult<&str, RebootStep> {
+    let (input, (on_off, ranges)) = separated_pair(
+        alt((tag("on"), tag("off"))),
+        space1,
+        separated_list1(tag(","), named_range),
+    )(input)?;
+
+    let on_off = match on_off {
+        "on" => true,
+        "off" => false,
+        _ => panic!("unhandled on_off"),
+    };
+
+    assert_eq!(ranges[0].0, "x");
+    assert_eq!(ranges[1].0, "y");
+    assert_eq!(ranges[2].0, "z");
+
+    Ok((
+        input,
+        (
+            on_off,
+            ranges[0].1.clone(),
+            ranges[1].1.clone(),
+            ranges[2].1.clone(),
+        ),
+    ))
+}
+
+pub fn reboot_step_list(input: &str) -> IResult<&str, Vec<RebootStep>> {
+    separated_list1(multispace1, reboot_step)(input)
+}
+
+#[test]
+fn test_reboot_step() {
+    assert_eq!(
+        reboot_step("on x=-22..26,y=-27..20,z=-29..19").unwrap(),
+        ("", (true, -22..=26, -27..=20, -29..=19))
+    )
 }
