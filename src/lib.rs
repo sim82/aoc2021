@@ -698,7 +698,7 @@ impl Cube {
         let zstart = self.zrange.start();
         let zend = self.zrange.end();
 
-        (xend - xstart) * (yend - ystart) * (zend - zstart)
+        (xend - xstart + 1) * (yend - ystart + 1) * (zend - zstart + 1)
     }
 }
 
@@ -731,5 +731,15 @@ fn test_cube() {
             .iter()
             .chain(out_cubes.iter())
             .fold(0, |a, c| a + c.volume())
-    )
+    );
+
+    assert_eq!(
+        Cube {
+            xrange: -5..=5,
+            yrange: -5..=5,
+            zrange: -5..=5
+        }
+        .volume(),
+        11 * 11 * 11
+    );
 }

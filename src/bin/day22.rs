@@ -1,6 +1,6 @@
 use std::{io::BufRead, ops::RangeInclusive};
 
-use aoc2021::{parser, Cube};
+use aoc2021::{parser, Cube, Overlap};
 use itertools::Itertools;
 
 type Output1 = i64;
@@ -132,20 +132,32 @@ fn puzzle(s: &str) -> (Option<Output1>, Option<Output2>) {
             zrange,
         };
 
+        let old_volume = cubes.iter().fold(0, |a, c| a + c.volume());
+
+        let mut discarded = Vec::new();
         let mut new_cubes = Vec::new();
         for cube in cubes {
             if let Some((_in_cubes, out_cubes)) = cube.split(&add_cube) {
+                discarded.extend(_in_cubes);
                 new_cubes.extend(out_cubes);
             } else {
                 new_cubes.push(cube);
             }
         }
+
+        let new_volume = new_cubes
+            .iter()
+            .chain(discarded.iter())
+            .fold(0, |a, c| a + c.volume());
+        assert_eq!(old_volume, new_volume);
         cubes = new_cubes;
         if on_off {
             cubes.push(add_cube.clone());
         }
 
         let vol = cubes.iter().fold(0, |a, c| a + c.volume());
+        println!("{} -> {}", old_volume, new_volume);
+
         println!(
             "{:?} {:?} -> {} {}",
             on_off,
@@ -153,10 +165,28 @@ fn puzzle(s: &str) -> (Option<Output1>, Option<Output2>) {
             vol,
             add_cube.volume()
         );
+        // for cs in cubes.iter().permutations(2) {
+        //     assert!(!cs[0].overlaps(cs[1]));
+        // }
     }
 
     let vol = cubes.iter().fold(0, |a, c| a + c.volume());
 
+    let init_cube = Cube {
+        xrange: -50..=50,
+        yrange: -50..=50,
+        zrange: -50..=50,
+    };
+
+    let mut init_cubes = Vec::new();
+    for cube in cubes {
+        if let Some((in_cubes, _out_cubes)) = cube.split(&init_cube) {
+            init_cubes.extend(in_cubes);
+        }
+    }
+
+    let init_vol = init_cubes.iter().fold(0, |a, c| a + c.volume());
+    assert_eq!(on_count, init_vol);
     (Some(on_count), Some(vol))
 }
 
