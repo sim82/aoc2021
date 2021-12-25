@@ -7,10 +7,10 @@ type Output2 = Output1;
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum AmphipodState {
     ForeignHigh(u8),
-    ForeignLow(u8),
+    ForeignLow(u8, u8),
     Storage(u8),
     FinalHigh(u8),
-    FinalLow(u8),
+    FinalLow(u8, u8),
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -20,10 +20,10 @@ pub struct State {
 
 fn final_room(i: usize) -> usize {
     match i {
-        0 | 1 => 0,
-        2 | 3 => 1,
-        4 | 5 => 2,
-        6 | 7 => 3,
+        0 | 1 | 2 | 3 => 0,
+        4 | 5 | 6 | 7 => 1,
+        8 | 9 | 10 | 11 => 2,
+        12 | 13 | 14 | 15 => 3,
         _ => unreachable!(),
     }
 }
@@ -32,7 +32,9 @@ fn puzzle(s: State) -> (Option<Output1>, Option<Output2>) {
     println!("start:");
     // print_state(&s);
 
-    let cost = [1, 1, 10, 10, 100, 100, 1000, 1000];
+    let cost = [
+        1, 1, 1, 1, 10, 10, 10, 10, 100, 100, 100, 100, 1000, 1000, 1000, 1000,
+    ];
     // println!("dist: {:x?}", dist);
 
     // #############
@@ -41,9 +43,12 @@ fn puzzle(s: State) -> (Option<Output1>, Option<Output2>) {
     //   #8#a#c#e#
     //   #########
     let goal = |s: &State| {
-        s.amphipods
-            .iter()
-            .all(|a| matches!(a, AmphipodState::FinalHigh(_) | AmphipodState::FinalLow(_)))
+        s.amphipods.iter().all(|a| {
+            matches!(
+                a,
+                AmphipodState::FinalHigh(_) | AmphipodState::FinalLow(_, _)
+            )
+        })
     };
 
     let successors = |s: &State| -> Vec<(State, i64)> {
@@ -66,12 +71,13 @@ fn puzzle(s: State) -> (Option<Output1>, Option<Output2>) {
             let tr = final_room(i) as u8;
             let cost = cost[i];
             match a {
+                // in storage and can reach high pos in final room (that is not occupied by a foreigner)
                 AmphipodState::Storage(storage_slot) => {
                     if can_reach_room(*storage_slot, tr, &storage_occ)
                         && !s.amphipods.iter().any(|o| {
                             *o == AmphipodState::FinalHigh(tr)
                                 || *o == AmphipodState::ForeignHigh(tr)
-                                || *o == AmphipodState::ForeignLow(tr)
+                                || matches!(*o, AmphipodState::ForeignLow(tr, _))
                         })
                     {
                         let mut s = s.clone();
@@ -79,24 +85,38 @@ fn puzzle(s: State) -> (Option<Output1>, Option<Output2>) {
                         new_states.push((s, dist_to_storage(*storage_slot, tr) * cost));
                     }
                 }
+                // in final high and
+                // - no foreigners in lower
+                // - low-0 free
+                // -> move into low-0
                 AmphipodState::FinalHigh(room)
                     if !s.amphipods.iter().any(|o| {
-                        *o == AmphipodState::FinalLow(*room)
-                            || *o == AmphipodState::ForeignLow(*room)
+                        let room = *room;
+                        matches!(
+                            *o,
+                            AmphipodState::FinalLow(room, 0) | AmphipodState::ForeignLow(room, _)
+                        )
                     }) =>
                 {
                     let mut s = s.clone();
-                    s.amphipods[i] = AmphipodState::FinalLow(*room);
+                    s.amphipods[i] = AmphipodState::FinalLow(*room, 0);
                     new_states.push((s, 1 * cost));
                 }
+                // in final high and final low-0 occupies -> do nothing
+                // TODO: not sure if this is correct
                 AmphipodState::FinalHigh(room)
                     if s.amphipods
                         .iter()
-                        .any(|o| *o == AmphipodState::FinalLow(*room)) =>
+                        .any(|o| *o == AmphipodState::FinalLow(*room, 0)) =>
                 {
                     ()
                 }
-                AmphipodState::FinalLow(_room) => (),
+                // in final low and
+                // - no foreigner in lower
+                // - low n+1 is free
+                // -> move down
+                meeeeeeeep
+                AmphipodState::FinalLow(room, level) => (),
                 AmphipodState::ForeignLow(room) => {
                     if !s.amphipods.iter().any(|o| {
                         *o == AmphipodState::FinalHigh(*room)

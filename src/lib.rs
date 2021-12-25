@@ -13,6 +13,9 @@ pub struct Vec2 {
     pub y: i64,
 }
 impl Vec2 {
+    pub fn new(x: i64, y: i64) -> Vec2 {
+        Vec2 { x, y }
+    }
     pub fn ortho_neighbors(&self) -> [Vec2; 4] {
         [
             Vec2 {
