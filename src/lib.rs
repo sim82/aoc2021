@@ -1,6 +1,6 @@
 use std::{
     collections::{HashMap, HashSet, VecDeque},
-    ops::{Add, RangeInclusive, Sub},
+    ops::{Add, Deref, RangeInclusive, Sub},
 };
 
 use itertools::Itertools;
@@ -470,20 +470,6 @@ impl SfNumber {
             _ => false,
         }
     }
-    // pub fn traverse_pairs_left_to_right_vec(
-    //     &mut self,
-    //     level: usize,
-    // ) -> Vec<((&mut i64, &mut i64), usize)> {
-    //     match self {
-    //         SfNumber::Number(v) => vec![(self, level)],
-    //         SfNumber::Pair(l, r) => {
-    //             let mut vl = l.traverse_left_to_right_vec(level + 1);
-    //             let mut vr = r.traverse_left_to_right_vec(level + 1);
-    //             vl.append(&mut vr);
-    //             vl
-    //         }
-    //     }
-    // }
 
     pub fn reduce(&mut self) {
         loop {
@@ -541,6 +527,20 @@ pub struct Cube {
     pub zrange: RangeInclusive<i64>,
 }
 
+impl Cube {
+    pub fn new(
+        xrange: RangeInclusive<i64>,
+        yrange: RangeInclusive<i64>,
+        zrange: RangeInclusive<i64>,
+    ) -> Self {
+        Cube {
+            xrange,
+            yrange,
+            zrange,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
 pub enum Overlap {
     Equals,
@@ -556,20 +556,37 @@ fn overlap_type(a: RangeInclusive<i64>, b: RangeInclusive<i64>) -> Overlap {
     let aend = a.end();
     let bstart = b.start();
     let bend = b.end();
-    if aend <= bstart || astart >= bend {
-        Overlap::None
-    } else if a == b {
+
+    //              0 1 2 3 4 5 6 7 8 9
+    //  Contains:   . . . . . . . . . .
+    //                        . . . . .
+    //              . . . .
+    //                  . . . . . . .
+
+    // Contained:       . . . . . . .
+    //              . . . . . . . . . .
+
+    //  Start:      . . . .
+    //                  . .
+    //                  . . . . . .
+
+    // End:             . . . . . .
+    //                  . .
+    //              . . . .
+
+    if a == b {
         Overlap::Equals
     } else if astart <= bstart && aend >= bend {
         Overlap::Contains
     } else if astart > bstart && aend < bend {
         Overlap::Contained
-    } else if astart <= bstart && aend > bstart {
+    } else if astart <= bstart && aend >= bstart {
         Overlap::Start
-    } else if astart < bend && aend >= bend {
+    } else if astart <= bend && aend >= bend {
         Overlap::End
     } else {
-        panic!("overlap {}..{} {}..{}", astart, aend, bstart, bend);
+        Overlap::None
+        // panic!("overlap {}..{} {}..{}", astart, aend, bstart, bend);
         // unreachable!()
     }
 }
@@ -583,7 +600,7 @@ fn test_overlap() {
     assert_eq!(overlap_type(-10..=9, -10..=10), Overlap::Start);
     assert_eq!(overlap_type(-9..=11, -10..=10), Overlap::End);
     assert_eq!(overlap_type(-9..=10, -10..=10), Overlap::End);
-    assert_eq!(overlap_type(-10..=-5, -5..=10), Overlap::None);
+    assert_eq!(overlap_type(-10..=-5, -4..=10), Overlap::None);
 }
 
 impl Cube {
@@ -602,26 +619,36 @@ impl Cube {
         let rstart = *r.start();
         let rend = *r.end();
 
-        match overlap_type(r, s.clone()) {
+        let overlap_type = overlap_type(r, s.clone());
+
+        match overlap_type {
             Overlap::Equals | Overlap::Contains => (vec![s], vec![]),
             Overlap::Contained => {
-                assert!(rstart < rend);
+                // Contained:       . . . . . . .
+                //              . . . . . . . . . .
+                assert!(rstart <= rend);
                 assert!(sstart < rstart);
                 assert!(rend < send);
-                (vec![rstart..=rend], vec![sstart..=rstart, rend..=send])
+                (
+                    vec![rstart..=rend],
+                    vec![sstart..=rstart - 1, rend + 1..=send],
+                )
             }
             Overlap::Start => {
-                assert!(sstart < rend);
-                // if rend >= send {
-                //     panic!("{:?} {:?} {} {}", r, s, rend, send);
-                // }
+                //  Start:      . . . .
+                //                  . .
+                //                  . . . . . .
+                assert!(sstart <= rend);
                 assert!(rend < send);
-                (vec![sstart..=rend], vec![rend..=send])
+                (vec![sstart..=rend], vec![rend + 1..=send])
             }
             Overlap::End => {
-                assert!(rstart < send);
+                // End:             . . . . . .
+                //                  . .
+                //              . . . .
+                assert!(rstart <= send);
                 assert!(sstart < rstart);
-                (vec![rstart..=send], vec![sstart..=rstart])
+                (vec![rstart..=send], vec![sstart..=rstart - 1])
             }
             Overlap::None => (vec![], vec![s]),
         }
@@ -657,13 +684,13 @@ impl Cube {
             new_cubes_in_y.extend(in_range.iter().cloned().map(|yrange| Cube {
                 xrange: cube.xrange.clone(),
                 yrange,
-                zrange: self.zrange.clone(),
+                zrange: cube.zrange.clone(),
             }));
 
             new_cubes_out.extend(out_range.iter().cloned().map(|yrange| Cube {
                 xrange: cube.xrange.clone(),
                 yrange,
-                zrange: self.zrange.clone(),
+                zrange: cube.zrange.clone(),
             }));
         }
 
@@ -688,6 +715,12 @@ impl Cube {
             }));
         }
 
+        assert_eq!(
+            new_cubes_in_z.iter().fold(0, |a, c| a + c.volume())
+                + new_cubes_out.iter().fold(0, |a, c| a + c.volume()),
+            self.volume()
+        );
+
         Some((new_cubes_in_z, new_cubes_out))
     }
 
@@ -706,7 +739,54 @@ impl Cube {
 }
 
 #[test]
+fn test_cube_split() {
+    let a = Cube {
+        xrange: 10..=12,
+        yrange: 10..=12,
+        zrange: 10..=12,
+    };
+    let b = Cube {
+        xrange: 11..=13,
+        yrange: 10..=12,
+        zrange: 10..=12,
+    };
+
+    let (inside, outside) = a.split(&b).unwrap();
+    assert_eq!(
+        inside,
+        vec![Cube {
+            xrange: 11..=12,
+            yrange: 10..=12,
+            zrange: 10..=12,
+        }]
+    );
+    assert_eq!(
+        outside,
+        vec![Cube {
+            xrange: 10..=10,
+            yrange: 10..=12,
+            zrange: 10..=12,
+        }]
+    );
+    println!(
+        "{:?} {:?} {} {}",
+        inside[0],
+        outside[0],
+        inside[0].volume(),
+        outside[0].volume()
+    );
+    assert_eq!(inside[0].volume() + outside[0].volume(), a.volume());
+}
+
+#[test]
 fn test_cube() {
+    let s = Cube {
+        xrange: 10..=12,
+        yrange: 10..=12,
+        zrange: 10..=12,
+    };
+    assert_eq!(s.volume(), 27);
+
     let s = Cube {
         xrange: -10..=10,
         yrange: -15..=15,
@@ -744,5 +824,72 @@ fn test_cube() {
         }
         .volume(),
         11 * 11 * 11
+    );
+}
+
+#[derive(Default)]
+pub struct CubeSet {
+    cubes: Vec<Cube>,
+}
+
+impl CubeSet {
+    pub fn add(&mut self, add_cube: Cube, on_off: bool) {
+        // println!("\nadd {:?} {:?}", add_cube, on_off);
+        let mut new_cubes = Vec::new();
+        for cube in self.cubes.drain(..) {
+            // println!("{:?}", cube);
+
+            if let Some((_in_cubes, out_cubes)) = cube.split(&add_cube) {
+                // println!("-> {:?} {:?}", _in_cubes, out_cubes);
+                new_cubes.extend(out_cubes);
+            } else {
+                // println!("no overlap");
+                new_cubes.push(cube);
+            }
+        }
+
+        self.cubes = new_cubes;
+        if on_off {
+            self.cubes.push(add_cube);
+        }
+
+        // let vol = self.cubes.iter().fold(0, |a, c| a + c.volume());
+    }
+
+    pub fn volume(&self) -> i64 {
+        self.cubes.iter().fold(0, |a, c| a + c.volume())
+    }
+    pub fn volume_intersect(&self, add_cube: &Cube) -> i64 {
+        let mut new_cubes = Vec::new();
+        for cube in self.cubes.iter() {
+            // println!("{:?}", cube);
+
+            if let Some((in_cubes, _out_cubes)) = cube.split(add_cube) {
+                // println!("-> {:?} {:?}", _in_cubes, out_cubes);
+                new_cubes.extend(in_cubes);
+            }
+        }
+        new_cubes.iter().fold(0, |a, c| a + c.volume())
+    }
+}
+
+#[test]
+pub fn test_cube_set() {
+    let mut cube_set = CubeSet::default();
+
+    cube_set.add(Cube::new(0..=0, 0..=1, 0..=2), true);
+    assert_eq!(cube_set.volume(), 6);
+    cube_set.add(Cube::new(0..=0, 0..=0, 0..=0), false);
+    assert_eq!(cube_set.volume(), 5);
+}
+#[test]
+pub fn test_cube_set_vol() {
+    let mut cube_set = CubeSet::default();
+    cube_set.add(Cube::new(-100..=0, -100..=0, -100..=0), true);
+    cube_set.add(Cube::new(0..=100, 0..=100, 0..=100), true);
+
+    println!(
+        "{}",
+        cube_set.volume_intersect(&Cube::new(-50..=50, -50..=50, -50..=50))
     );
 }

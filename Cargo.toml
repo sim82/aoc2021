@@ -10,3 +10,4 @@ nom = "^7"
 itertools = "^0.10"
 multimap = { version = "^0.8", default-features = false }
 pathfinding = { vertsion = "^3", default-features = false }
+rand = "0.8"
